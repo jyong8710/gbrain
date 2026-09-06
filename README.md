@@ -1,20 +1,59 @@
-# gbrain (부서 위키)
+# gbrain (부서 위키 프로젝트)
 
-[GBrain](https://github.com/garrytan/gbrain)을 기반으로 구축하는 부서용 LLM 위키. 시스템/개발/운영 인프라/네트워크 지식을 저장하고, VOC 에이전트와 개발/운영 에이전트를 MCP로 Claude Code / 사내 LLM에 연결하는 것이 목표.
+> **다른 에이전트/LLM에게**: 이 저장소는 [garrytan/gbrain](https://github.com/garrytan/gbrain)을 포크한 것이지만, 저장소의 진짜 가치는 원본 코드가 아니라 **`docs/` 아래에 있는 분석/설계 문서**다. 원본 코드는 참고 대상일 뿐, 이 프로젝트가 진행 중인 작업은 "이 코드를 어떻게 이해했고, 우리 조직에 맞게 어떻게 쓰거나 재구현할지"에 대한 결론이다. 아래 순서대로 읽으면 지금까지의 판단 근거를 재현할 수 있다.
 
-## 문서
+## 이 프로젝트가 하려는 것
 
-- [`docs/department-wiki/01-SCHEMA_DESIGN.md`](docs/department-wiki/01-SCHEMA_DESIGN.md) — 페이지 타입/관계 타입 스키마 설계
-- [`docs/department-wiki/02-CRAWLING_PIPELINE.md`](docs/department-wiki/02-CRAWLING_PIPELINE.md) — 사내 문서 크롤링/인입 파이프라인
-- [`docs/department-wiki/03-ARCHITECTURE_PLAN.md`](docs/department-wiki/03-ARCHITECTURE_PLAN.md) — 전체 아키텍처 계획 (Postgres, MCP, 페르소나별 에이전트)
-- [`docs/WIKI_IMPLEMENTATION_NOTES.md`](docs/WIKI_IMPLEMENTATION_NOTES.md) — GBrain 코드베이스 리버스엔지니어링 상세 문서 (아키텍처, 알고리즘, CLI 전체 카탈로그)
+시스템/개발/운영 인프라/네트워크 지식을 담는 **부서 공유 지식 브레인**을 만들고, 그 위에 **VOC 에이전트**와 **개발/운영 에이전트**를 MCP로 얹어서 Claude Code나 사내 LLM("가우스")과 연결한다. 목적은 개발 생산성 향상과 장애 대응 시너지.
 
-## 목표
+GBrain을 고른 이유: 하이브리드 검색(벡터+키워드) + 자동 지식그래프 + 팀별 접근 스코핑 + MCP 서버가 이미 구현돼 있어서, 이 기능들을 처음부터 새로 만들 필요가 없다고 판단했기 때문. (전체 판단 과정은 `docs/department-wiki/03-ARCHITECTURE_PLAN.md` 참고.)
 
-- VOC 에이전트, 개발/운영 에이전트를 MCP로 Claude Code / 사내 LLM에 연결
-- 시스템/인프라/네트워크 지식을 부서 공유 브레인으로 관리
-- DB는 Postgres 확정 (팀 브레인 + Minions 동시성 요구사항 때문)
+## 문서 읽는 순서 (LLM 온보딩 경로)
 
-## 출처
+### 1. 먼저 결론만 필요하면 → `docs/department-wiki/`
+- **`03-ARCHITECTURE_PLAN.md`** — 최종 배포 아키텍처. Postgres 단일 DB(벡터+그래프+큐 통합), `gbrain serve --http` 상시 서버, `infra`/`voc`/`devops` 3소스 분리, VOC/개발운영 에이전트별 MCP 클라이언트 스코프(surface: starter vs full), 리스크 5가지, 체크리스트.
+- **`01-SCHEMA_DESIGN.md`** — GBrain의 "Agent-authored schema" 기능으로 정의할 부서 전용 페이지 타입(`system`/`incident`/`runbook`/`network-device` 등)과 관계 타입(`depends_on`/`hosted_on` 등), 실제 스키마팩 YAML 예시.
+- **`02-CRAWLING_PIPELINE.md`** — Confluence/Git레포/이슈트래커에서 문서를 크롤링해 MD로 정규화하고 GBrain에 인입하는 파이프라인. GBrain 자체 컨벤션(test-before-bulk의 10→100→500→전체 램프)을 그대로 적용.
 
-이 저장소는 [garrytan/gbrain](https://github.com/garrytan/gbrain)을 기반으로 합니다. 원본 소스는 그대로 포함되어 있고(`src/`, `admin/`, `skills/` 등), 라이선스는 [`LICENSE`](LICENSE)(MIT)를 따릅니다. 원본 README는 [`docs/UPSTREAM_GBRAIN_README.md`](docs/UPSTREAM_GBRAIN_README.md)에 보관.
+이 3개 문서는 서로 이어지는 하나의 계획이며, **2번 대화(브레인스토밍) → 3번 문서 작성** 순서로 만들어졌다. 즉 "어떤 기능을 쓸지 결정 → 그 결정을 스키마/파이프라인/아키텍처로 구체화"한 결과물이다.
+
+### 2. "왜 이렇게 판단했는지" 근거가 필요하면 → `docs/WIKI_IMPLEMENTATION_NOTES.md`
+GBrain 코드베이스(수백 개 파일)를 리버스엔지니어링한 4,057줄짜리 문서. 위 설계 문서의 모든 주장은 이 문서의 특정 섹션에 근거를 두고 있다. 목차(58개 섹션)가 문서 최상단에 있고, 구조는 이렇다:
+
+- **Part 1 (1~18번)**: 아키텍처 개요 수준 — DB 엔진, 검색/그래프 개념, MCP 서버, CLI 카탈로그, 팀 브레인, 한국어 지원 리스크
+- **Part 2 (19~27번)**: "사용 가이드"에서 "재구현 가능한 리버스엔지니어링"으로 격상한 라운드 — DB 스키마 DDL 전문, RRF 검색 공식 원문, 청킹 알고리즘, 그래프 추출 정규식, Minions 상태머신, OAuth 스코핑 SQL, MCP 콜스택, 엔진 비교
+- **Part 3 (28~43번)**: Part 1/2의 "추정" 표시를 실측으로 교체 + 코드인텔/스키마팩/소스/admin UI 심화
+- **Part 4~6 (44~58번)**: 사용자가 명시적으로 요청한 "지엽적인 것까지 전부" 라운드 — skills 75개 전체 카탈로그, MCP 오퍼레이션 전수, eval 22개 커맨드, admin 컴포넌트 전체, 빌드/CI/테스트, conventions 문서 16개, check:resolver 등
+
+**신뢰도에 대한 솔직한 메모**: 이 문서는 여러 서브에이전트가 병렬로 조사한 결과를 병합한 것이다. 대부분은 실제 코드 원문 인용(파일:라인)으로 검증됐지만, 일부는 "미확인"으로 명시적으로 남겨져 있다(예: `test/skills-conformance.test.ts`의 MECE gap 세부 로직, 1,800여 개 테스트 파일 중 6개만 대표 확인, CI가 참조하는 외부 GitHub Action의 내부 구현은 이 저장소 밖이라 구조적으로 확인 불가). **"미확인"이라고 적힌 부분을 사실로 취급하지 말 것.**
+
+### 3. 원본 코드/문서 자체가 필요하면
+- `src/`, `admin/`, `skills/` 등 — GBrain 원본 소스 (수정 없이 그대로 포함, MIT 라이선스)
+- `docs/UPSTREAM_GBRAIN_README.md` — 원본 프로젝트의 README (설치법, 기능 소개, YC 관련 배경 등 원저자 관점의 설명)
+
+## 핵심 결론 요약 (문서를 안 열어도 알아야 할 것)
+
+- **DB는 Postgres로 확정** — PGLite(기본값)는 단일 프로세스 전제라 팀 브레인/Minions 동시성과 근본적으로 안 맞음이 코드로 확인됨(엔진 비교 섹션).
+- **콘텐츠 조작의 유일한 공식 API는 MCP뿐** — 일반 REST API가 없음. 자체 프론트엔드를 만들려면 MCP 클라이언트로 붙거나 REST↔MCP 브리지를 직접 짜야 함.
+- **admin 대시보드(`/admin`)는 콘텐츠 CRUD가 아님** — OAuth 클라이언트/요청로그/job 모니터링 전용 운영자 콘솔.
+- **관계(그래프) 자동추출은 100% 규칙 기반**(정규식+엔티티사전), LLM 호출 없음 — 커스텀 관계(`depends_on` 등)를 쓰려면 스키마팩에 정규식을 직접 선언해야 함.
+- **한국어는 부분적으로만 안전** — CJK 토큰 처리는 이미 잘 되어 있으나, `salience`/`recency`(중요도/최신성) 자동감지 휴리스틱은 영어 전용이라 한국어 질의 시 명시적 파라미터 지정이 필요.
+- **코드 인텔리전스(호출그래프)는 TS/TSX/JS/Python 4개 언어만 지원** — Go/Java/Terraform 등은 검색은 되지만 "이 함수 어디서 호출되나" 같은 그래프 질의는 안 됨.
+- **"가우스"(사내 LLM) 연동 가능 여부는 미확정** — MCP 클라이언트 프로토콜을 사내 LLM 플랫폼이 지원하는지 먼저 확인 필요(아키텍처 계획서 3.4번 섹션).
+
+## 지금까지의 진행 순서 (재현 가능하도록 기록)
+
+1. GBrain 저장소 클론 → 기능 목록 파악 (README 기반)
+2. 부서 위키 용도에 맞는 우선 기능 선정: MCP, Autopilot, Minions, LongMemEval, 팀 브레인, Memorable, 스키마 커스터마이징, 코드 인텔리전스, 한국어 검색
+3. 재구현 가능 수준까지 코드베이스 심층 리버스엔지니어링 (`WIKI_IMPLEMENTATION_NOTES.md`, 여러 라운드에 걸쳐 확장)
+4. 문서 내부 모순/오류 교차검증 및 수정 (Part별로 앞서 "추정"했던 게 나중에 뒤집힌 사례 다수 — 문서 안에 정정 이력이 그대로 남아있음)
+5. 부서 위키용 스키마/파이프라인/아키텍처 설계 문서 3종 작성
+6. 원본 GBrain 소스 + 분석 문서 + 설계 문서를 하나의 저장소로 통합, 이 README로 정리
+
+## 아직 안 한 것 (다음 단계)
+
+`docs/department-wiki/03-ARCHITECTURE_PLAN.md`의 "다음 단계 체크리스트" 참고 — Postgres 프로비저닝, `gbrain init`, 스키마팩 실제 적용, 크롤러 코드 작성, MCP 서버 배포, 페르소나별 클라이언트 등록. 즉 **지금까지는 전부 계획/분석 단계이고, 실제 구현 코드는 아직 이 저장소에 없다.**
+
+## 라이선스
+
+원본 GBrain 소스는 MIT 라이선스([`LICENSE`](LICENSE))를 유지한다. `docs/department-wiki/`와 `docs/WIKI_IMPLEMENTATION_NOTES.md`는 이 프로젝트에서 새로 작성한 분석/설계 문서다.
