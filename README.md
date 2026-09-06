@@ -14,7 +14,7 @@ GBrain을 고른 이유: 하이브리드 검색(벡터+키워드) + 자동 지�
 - **`03-ARCHITECTURE_PLAN.md`** — 최종 배포 아키텍처. Postgres 단일 DB(벡터+그래프+큐 통합), `gbrain serve --http` 상시 서버, `infra`/`voc`/`devops` 3소스 분리, VOC/개발운영 에이전트별 MCP 클라이언트 스코프(surface: starter vs full), 리스크 5가지, 체크리스트.
 - **`01-SCHEMA_DESIGN.md`** — GBrain의 "Agent-authored schema" 기능으로 정의할 부서 전용 페이지 타입(`system`/`incident`/`runbook`/`network-device` 등)과 관계 타입(`depends_on`/`hosted_on` 등), 실제 스키마팩 YAML 예시.
 - **`02-CRAWLING_PIPELINE.md`** — Confluence/Git레포/이슈트래커에서 문서를 크롤링해 MD로 정규화하고 GBrain에 인입하는 파이프라인. GBrain 자체 컨벤션(test-before-bulk의 10→100→500→전체 램프)을 그대로 적용.
-- **`04-UPGRADE_CHECKLIST.md`** — **회사에 이미 있는 LLM 위키/모델을 GBrain 기능으로 업그레이드할 때 쓰는 비교 체크리스트.** 검색/그래프/스키마/자동화/접근제어/에이전트연동/한국어 지원 7개 축으로 "GBrain은 이렇게 한다 vs 우리는?"을 항목별로 정리. 내부 LLM이 회사 소스코드를 보고 이 표의 "우리 시스템 현황" 칸을 채우도록 설계됨.
+- **`04-UPGRADE_CHECKLIST.md`** — **회사에 이미 있는 LLM 위키/모델을 GBrain 기능으로 업그레이드할 때 쓰는 비교 체크리스트.** 검색/그래프/스키마/자동화/접근제어/에이전트연동/한국어 지원 7개 축으로 "GBrain은 이렇게 한다 vs 우리는?"을 항목별로 정리. **아직 빈 템플릿**이다 — 회사 기존 시스템 소스코드를 이 저장소 작업자는 본 적 없으므로, "우리 시스템 현황" 칸은 내부 LLM/개발자가 실제 코드를 보고 채워야 한다.
 
 이 4개 문서는 하나로 이어지는 계획이다: **어떤 기능을 쓸지 결정(03) → 그 결정을 스키마(01)/파이프라인(02)으로 구체화 → 기존 시스템과의 갭을 항목별로 비교(04)**.
 
